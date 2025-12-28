@@ -80,6 +80,7 @@ dwu --save-dir ~/Wallpapers
 dwu --save
 ```
 
+<h1>Continuous Mode</h1>
 I've tried to make a "Continuous Mode" like the original, I haven't done enough testing to confirm if it works 100% yet, so please report bugs or give advice on how to improve it! 
 you can use systemd in two ways:
 
@@ -126,6 +127,25 @@ You can also run continuous mode manually (useful for testing):
 ```bash
 dwu --continuous              # Check every hour (default)
 dwu --continuous --interval 1800  # Check every 30 minutes
+```
+
+<h1>Troubleshooting</h1>
+
+If you run into issues during installation or updates, try these solutions.
+
+"Command not found" after installing If the installation finished but the terminal can't find dwu, your local bin folder might not be in your PATH. Run this once and restart your terminal:
+```bash
+pipx ensurepath
+```
+
+"bash: /usr/bin/dwu: No such file or directory" If you previously installed an older version of dwu, your terminal might remember the old location. Force it to forget:
+```bash
+hash -r
+```
+
+error: externally-managed-environment" or "exists in filesystem" This happens if you previously installed Python packages using sudo pip. You need to remove the conflicting system packages before pipx can work:
+```bash
+sudo pip uninstall [INSTER CONFLICTING PACKAGE] dwu --break-system-packages # In my case it was the 'click' package
 ```
 
 The wallpaper has a watermark to credit the artist in the bottom right corner.  
