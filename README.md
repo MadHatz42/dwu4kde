@@ -64,10 +64,51 @@ dwu --save-dir ~/Wallpapers
 dwu --save
 ```
 
-For automatic hourly updates, use systemd if you're on Arch. If not, you might need to figure something out yourself.
+For automatic updates, you can use systemd in two ways:
+
+**Option 1: Continuous Mode (Recommended)**
+Runs continuously in the background, checking for new wallpapers every hour:
 
 ```bash
+# Copy the service file to your systemd user directory
+cp systemd/dwu.service ~/.config/systemd/user/
+
+# IMPORTANT: Edit the service file to use the correct path to dwu
+# Find where dwu is installed: which dwu
+# Then edit ~/.config/systemd/user/dwu.service and update the ExecStart line
+# The default path is /usr/bin/dwu (for AUR/system packages)
+# If installed via pipx/pip --user, change to: /home/YOUR_USERNAME/.local/bin/dwu
+nano ~/.config/systemd/user/dwu.service
+
+# Reload systemd and enable the service
+systemctl --user daemon-reload
+systemctl --user enable --now dwu.service
+
+# Check status
+systemctl --user status dwu.service
+
+# View logs
+journalctl --user -u dwu.service -f
+```
+
+**Option 2: Timer-based (Hourly)**
+Runs once per hour using a timer:
+
+```bash
+# Copy both service and timer files
+cp systemd/dwu.service ~/.config/systemd/user/
+cp systemd/dwu.timer ~/.config/systemd/user/
+
+# Enable and start the timer
 systemctl --user enable --now dwu.timer
+```
+
+**Manual Continuous Mode**
+You can also run continuous mode manually (useful for testing):
+
+```bash
+dwu --continuous              # Check every hour (default)
+dwu --continuous --interval 1800  # Check every 30 minutes
 ```
 
 The wallpaper has a watermark to credit the artist in the bottom right corner.  

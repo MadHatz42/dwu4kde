@@ -49,6 +49,11 @@ class WallpaperManager:
     def _apply_wallpaper(self, meta: WallpaperMetadata) -> WallResult:
         old_meta = WallpaperMetadata.load()
         
+        # Get the previous wallpaper path for cleanup before metadata is overwritten
+        previous_wallpaper_path = None
+        if old_meta and old_meta.img_url != meta.img_url:
+            previous_wallpaper_path = self._get_image_path(old_meta)
+        
         if old_meta and old_meta.img_url == meta.img_url:
             if old_meta.successfully_set:
                 if self._backend:
@@ -58,14 +63,14 @@ class WallpaperManager:
             # reapply
             image_path = self._get_image_path(meta)
             if os.path.exists(image_path):
-                self._set_wallpaper(image_path, meta)
+                self._set_wallpaper(image_path, meta, previous_wallpaper_path)
                 return WallResult.SET
         
         meta.save()
         filename = self.download_image(meta)
         if meta.add_watermark:
             self._watermark_image(filename, meta)
-        self._set_wallpaper(filename, meta)
+        self._set_wallpaper(filename, meta, previous_wallpaper_path)
         
         return WallResult.SET
     
@@ -143,11 +148,13 @@ class WallpaperManager:
         
     def _get_image_path(self, metadata: WallpaperMetadata) -> str:
         ext = infer_extension(metadata.img_url)
-        return os.path.join(self._cache_dir, f"current_wallpaper.{ext}")
+        # Use unique filename based on day number so KDE detects it as a new file
+        return os.path.join(self._cache_dir, f"wallpaper_day_{metadata.day}.{ext}")
 
     def download_image(self, metadata: WallpaperMetadata, sp: str | None = None) -> str:
         ext = infer_extension(metadata.img_url)
-        save_path = sp or os.path.join(self._cache_dir, f"current_wallpaper.{ext}")
+        # Use unique filename based on day number so KDE detects it as a new file
+        save_path = sp or os.path.join(self._cache_dir, f"wallpaper_day_{metadata.day}.{ext}")
         
         response = self._client.get(metadata.img_url)
         if response.status_code != 200:
@@ -158,11 +165,15 @@ class WallpaperManager:
         
         return save_path
         
-    def _set_wallpaper(self, filename: str, meta: WallpaperMetadata) -> None:
+    def _set_wallpaper(self, filename: str, meta: WallpaperMetadata, previous_wallpaper_path: str | None = None) -> None:
         if not os.path.isfile(filename):
             raise WallpaperSetError("Wallpaper file not found")
         if not self._backend:
             raise WallpaperSetError("No wallpaper backend found")
+        
+        # Only delete if it's a different file (not the one we're about to set)
+        if previous_wallpaper_path == filename:
+            previous_wallpaper_path = None
             
         try:
             self._backend.set_wallpaper(os.path.abspath(filename))
@@ -173,3 +184,11 @@ class WallpaperManager:
         
         meta.successfully_set = True
         meta.save()
+        
+        # Clean up the previous wallpaper file after successfully setting the new one
+        if previous_wallpaper_path and os.path.exists(previous_wallpaper_path):
+            try:
+                os.remove(previous_wallpaper_path)
+            except OSError:
+                # Ignore errors when deleting old files (e.g., permission issues)
+                pass

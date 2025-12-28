@@ -1,17 +1,13 @@
 from __future__ import annotations
 import os
 import subprocess
+import re
 from urllib.parse import urlparse
-
 import click
-
 from dwu.wallresult import WallResult
 
 def get_cache_dir() -> str:
-    cache_dir = os.environ.get(
-        "XDG_CACHE_HOME",
-        os.path.expanduser("~/.cache")
-    )
+    cache_dir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
     path = os.path.join(cache_dir, "dwu")
     os.makedirs(path, exist_ok=True)
     return path
@@ -23,7 +19,6 @@ def infer_extension(url: str) -> str:
             return ext
     return "png"
 
-        
 def detect_display_server() -> str:
     if os.environ.get('WAYLAND_DISPLAY'):
         return 'wayland'
@@ -31,43 +26,23 @@ def detect_display_server() -> str:
         return 'x11'
     return 'unknown'
     
-def get_display_resolution() -> tuple:
-    ds = detect_display_server()
-    
+def get_display_resolution() -> tuple[int, int]:
+    """Dynamically fetches resolution using KDE's kscreen-doctor."""
     try:
-        if ds == 'wayland':
-            result = subprocess.run(
-                'wlr-randr | grep current',
-                shell=True,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            res = result.stdout.strip().split(" ")[0]
-            
-        elif ds == 'x11':
-            result = subprocess.run(
-                ['xrandr'],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            
-            for line in result.stdout.split('\n'):
-                if '*' in line:
-                    res = line.split()[0]
-                    break
-            else:
-                return (1920, 1080)
-        else:
-            return (1920, 1080)
-        
-        return tuple(map(int, res.split('x')))
-        
-    except Exception as e:
-        click.echo(f"Could not detect resolution: {e}")
-        return (1920, 1080)
-                
+        result = subprocess.run(
+            ["kscreen-doctor", "-o"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # Looks for pattern like 1800x1125@
+        match = re.search(r"(\d+)x(\d+)@", result.stdout)
+        if match:
+            return (int(match.group(1)), int(match.group(2)))
+    except Exception:
+        pass
+    # Fallback default
+    return (1920, 1080)
 
 def print_wall_feedback(result: WallResult) -> None:
     match result:

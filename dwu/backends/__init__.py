@@ -1,21 +1,10 @@
-from dwu.backends.nitrogen import NitrogenBackend
-from dwu.backends.awww import AwwwBackend
-from dwu.backends.feh import FehBackend
-from dwu.backends.swww import SwwwBackend
+from dwu.backends.kde import KdeBackend
 from dwu.backends.base import WallpaperBackend
 
-WAYLAND_BACKENDS = [
-    AwwwBackend(),
-    SwwwBackend(),
-]
-
-X11_BACKENDS = [
-    FehBackend(),
-    NitrogenBackend()
-]
-
 def get_backend(display_server: str) -> WallpaperBackend | None:
-    for backend in (WAYLAND_BACKENDS if display_server == 'wayland' else X11_BACKENDS):
-        if backend.is_available():
-            return backend
-    raise RuntimeError("No supported wallpaper backend found")
+    # We force it to use your KDE backend regardless of Wayland/X11
+    backend = KdeBackend()
+    if backend.is_available():
+        return backend
+    
+    raise RuntimeError("KDE wallpaper utility (plasma-apply-wallpaperimage) not found!")
